@@ -1,19 +1,28 @@
+import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import { AppModule, ObserveInstrument } from './app.module.js';
+import { AppModule } from './app.module.js';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, {
-    instrument: ObserveInstrument,
-  });
+  const app = await NestFactory.create(AppModule);
+
+  app.setGlobalPrefix('api/v1');
+
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
+    }),
+  );
 
   const config = new DocumentBuilder()
     .setTitle('CampusStudy — Servicio de Notificaciones')
     .setDescription(
-      'Documentación OpenAPI/Swagger del Servicio de Notificaciones (Equipo 07). Gestiona y expone avisos académicos, recordatorios y notificaciones de estudiantes.',
+      'Gestiona y expone avisos académicos, recordatorios y notificaciones de estudiantes.',
     )
     .setVersion('1.0')
-    .addTag('Notificaciones')
+    .addBearerAuth()
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
