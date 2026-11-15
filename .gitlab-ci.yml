@@ -1,0 +1,64 @@
+stages:
+  - build
+  - image
+  - smoke
+  - release
+
+variables:
+  IMAGEN: "$CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA"
+
+compilar:
+  stage: build
+  image: node:22-alpine
+  cache:
+    key:
+      files:
+        - package-lock.json
+    paths:
+      - .npm/
+  script:
+    - npm ci --cache .npm --prefer-offline
+    - npm run build
+
+# Plantilla: Docker dentro del job + login al registry, solo en la rama por defecto
+.docker:
+  image: docker:27
+  services:
+    - docker:27-dind
+  variables:
+    DOCKER_TLS_CERTDIR: "/certs"
+  before_script:
+    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+publicar-imagen:
+  extends: .docker
+  stage: image
+  script:
+    - docker build -t "$IMAGEN" .
+    - docker push "$IMAGEN"
+
+prueba-humo:
+  extends: .docker
+  stage: smoke
+  script:
+    - docker network create humo
+    - docker run -d --name mongo --network humo mongo:7
+    - 'until docker exec mongo mongosh --quiet --eval "db.runCommand({ ping: 1 })"; do sleep 1; done'
+    - docker run -d --name notificaciones --network humo
+        -e MONGODB_URI="mongodb://mongo:27017/notificaciones"
+        -e JWT_SECRET="clave-solo-para-la-prueba-de-humo"
+        "$IMAGEN"
+    - docker run --rm --network humo curlimages/curl:8.10.1
+        --fail --silent --show-error --retry 15 --retry-delay 2 --retry-all-errors
+        http://notificaciones:3000/health
+        || (docker logs notificaciones; exit 1)
+
+promover-latest:
+  extends: .docker
+  stage: release
+  script:
+    - docker pull "$IMAGEN"
+    - docker tag "$IMAGEN" "$CI_REGISTRY_IMAGE:latest"
+    - docker push "$CI_REGISTRY_IMAGE:latest"
