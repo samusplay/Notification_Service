@@ -10,6 +10,9 @@ export type NotificacionDocument = HydratedDocument<Notificacion>;
 })
 export class Notificacion {
   @Prop({ required: true })
+  evento_id: string;
+
+  @Prop({ required: true })
   usuario_id: number;
 
   @Prop({ required: true })
@@ -33,3 +36,10 @@ export class Notificacion {
 export const NotificacionSchema = SchemaFactory.createForClass(Notificacion);
 
 NotificacionSchema.index({ usuario_id: 1, fecha_creacion: -1 });
+
+// Idempotencia: el mismo evento no crea dos notificaciones.
+// Parcial: las notificaciones viejas (sin evento_id) no chocan entre sí.
+NotificacionSchema.index(
+  { evento_id: 1 },
+  { unique: true, partialFilterExpression: { evento_id: { $type: 'string' } } },
+);

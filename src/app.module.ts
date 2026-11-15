@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { MongooseModule } from '@nestjs/mongoose';
+import { HealthModule } from './health/health.module.js';
 import { NotificacionesModule } from './notificaciones/notificaciones.module.js';
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { NotificacionesModule } from './notificaciones/notificaciones.module.js'
       }),
     }),
     NotificacionesModule,
+    HealthModule,
   ],
 })
 export class AppModule { }

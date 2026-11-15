@@ -1,6 +1,11 @@
-import { IsInt, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { IsInt, IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
 
 export class CrearNotificacionDto {
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(80)
+  evento_id: string;
+
   @IsInt()
   usuario_id: number;
 
